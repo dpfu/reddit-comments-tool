@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as follows:"
+authors:
+  - family-names: Pfurtscheller
+    given-names: Daniel
+title: "Reddit Data Tool"
+version: "1.0"
+doi: "10.5281/zenodo.15024197"
+date-released: "2025-03-14"

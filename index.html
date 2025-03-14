@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Reddit Research Exporter</title>
+  <meta charset="utf-8"/>
+  <meta name="author" content="Daniel Pfurtscheller @dpfu on GitHub"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+  <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+      integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+      crossorigin="anonymous"
+  />
+  <style>
+    th {
+      cursor: pointer; /* indicates columns are sortable */
+    }
+    #output-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #output-table th, #output-table td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      vertical-align: top;
+    }
+    .hidden {
+      display: none;
+    }
+    .description {
+      font-size: 0.95em;
+      color: #555;
+      margin-bottom: 15px;
+    }
+    #tool-title {
+      margin-top: 20px;
+      margin-bottom: 10px;
+    }
+    .help-block {
+      font-size: 0.9em;
+      color: #666;
+    }
+  </style>
+</head>
+<body onload="onDocumentReady()">
+
+<div class="container">
+
+  <!-- Title and short instructions -->
+  <h1 id="tool-title">Reddit Research Exporter</h1>
+  <p class="description">
+    A simple, browser-based tool for exporting Reddit posts and comment threads for research, analysis, and archival. 
+    This tool fetches comment data as JSON, formats it hierarchically, and offers multiple output options.
+  </p>
+
+  <h4>How to Use</h4>
+  <ol>
+    <li>Paste a valid Reddit post URL in the field below.</li>
+    <li>Adjust any settings you need (date format, layout, newline handling, etc.).</li>
+    <li>Click <strong>Export</strong> to view the results in a sortable table.</li>
+    <li>Use the <strong>Download CSV</strong> or <strong>Copy Table (HTML)</strong> buttons for further analysis.</li>
+  </ol>
+
+  <!-- Reddit URL input -->
+  <div class="form-group">
+    <label for="url-field"><strong>1. Reddit Post URL</strong></label>
+    <input
+      name="url"
+      class="form-control"
+      type="text"
+      id="url-field"
+      placeholder="https://www.reddit.com/r/.../comments/..."
+      required
+    />
+    <p class="help-block">Example: https://www.reddit.com/r/samplesubreddit/comments/abc123/sample_post</p>
+  </div>
+
+  <!-- Options panel -->
+  <div class="panel panel-default">
+    <div class="panel-heading"><strong>2. Options</strong></div>
+    <div class="panel-body">
+
+      <!-- Date Format Selection -->
+      <label>Date Format (UTC Only):</label>
+      <div class="radio">
+        <label>
+          <input type="radio" name="dateFormat" value="iso8601" checked>
+          ISO-8601 (2025-03-11T14:19:10+00:00)
+        </label>
+      </div>
+      <div class="radio">
+        <label>
+          <input type="radio" name="dateFormat" value="rfc1123">
+          RFC 1123 (Tue, 11 Mar 2025 14:19:10 GMT)
+        </label>
+      </div>
+      <div class="radio">
+        <label>
+          <input type="radio" name="dateFormat" value="utc">
+          UTC (2025-03-11T14:19:10Z)
+        </label>
+      </div>
+
+      <!-- Compact Mode Checkbox -->
+      <div class="checkbox">
+        <label>
+          <input class="form-check-input" type="checkbox" id="compactMode">
+          Compact Comments Mode (metadata appended to body)
+        </label>
+      </div>
+
+      <!-- Escape New Line -->
+      <div class="checkbox">
+        <label>
+          <input class="form-check-input" type="checkbox" id="escapeNewLine">
+          Strip newline characters from comments
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action buttons -->
+  <div class="form-group">
+    <label><strong>3. Generate and Download</strong></label><br/>
+    <button class="btn btn-primary" onclick="startExport()">Export</button>
+    <button class="btn btn-success" onclick="downloadCSV()" disabled id="download-btn">Download CSV</button>
+    <button class="btn btn-info" onclick="copyTableAsHTML()" disabled id="copy-btn">Copy Table (HTML)</button>
+  </div>
+
+  <!-- Post Info area -->
+  <div id="post-info-block" class="hidden">
+    <h2>Post Details</h2>
+    <div id="post-info"></div>
+  </div>
+
+  <!-- Output area -->
+  <div id="output-block" class="hidden">
+    <h3>Comment Thread (Sortable Table)</h3>
+    <div id="table-wrapper"></div>
+  </div>
+
+  <footer style="margin-top: 30px;">
+    <hr/>
+    <p>
+      <strong>Credits:</strong> Tool developed and maintained by 
+      <em>Daniel Pfurtscheller (@dpfu on GitHub)</em> and contributors.
+    </p>
+  </footer>
+</div>
+
+<script type="text/javascript" src="./script.js"></script>
+</body>
+</html>

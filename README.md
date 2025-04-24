@@ -6,7 +6,7 @@ A simple, browser-based tool for exporting Reddit posts and comment threads for 
 
 ## Usage
 
-1. Download the HTML and JS files and run locally.
+1. Download the `index.html` and `script.js` files from the [GitHub repository](https://github.com/dpfu/reddit-data-tool) and run them locally.
 2. Use the hosted version at: [https://dpfu.github.io/reddit-data-tool/](https://dpfu.github.io/reddit-data-tool/)
 
 ## Cite

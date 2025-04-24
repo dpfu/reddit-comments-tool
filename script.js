@@ -2,11 +2,15 @@
   script.js
 
   A user-friendly front-end for exporting Reddit post data
-  (comments, scores, metadata) to CSV or HTML for further analysis.
+  (comments, scores, metadata) to CSV or HTML for further analysis,
+  plus a refined rectangular-node visualization module using D3.js.
 */
 
+// =========================
+// Global Variables & State
+// =========================
 let http = new XMLHttpRequest();
-let tableData = [];     
+let tableData = [];
 let tableBuilt = false;
 
 // User preferences
@@ -17,6 +21,10 @@ let removeNewlines = false;
 // We'll store info about the post itself
 let postInfo = null;
 
+
+// =========================
+// INITIAL LOADING
+// =========================
 function onDocumentReady() {
   const preFilledUrl = getQueryParamUrl();
   if (preFilledUrl) {
@@ -25,17 +33,15 @@ function onDocumentReady() {
   }
 }
 
-// Get 'url' query param if present
+// Read 'url' query param if present
 function getQueryParamUrl() {
   return new URLSearchParams(window.location.search).get('url') ?? null;
 }
 
-// Grab the text field value
-function getFieldUrl() {
-  return document.getElementById('url-field').value.trim();
-}
 
-// Start the fetch-and-render process
+// =========================
+// START EXPORT
+// =========================
 function startExport() {
   const url = getFieldUrl();
   if (!url) {
@@ -54,10 +60,23 @@ function startExport() {
   tableBuilt = false;
   postInfo = null;
 
+  // Hide existing UI blocks
+  document.getElementById('post-info-block').classList.add('hidden');
+  document.getElementById('output-block').classList.add('hidden');
+  document.getElementById('visualization-panel').classList.add('hidden');
+
   fetchData(url);
 }
 
-// Fetch Reddit JSON by appending .json
+// Grab the text field value
+function getFieldUrl() {
+  return document.getElementById('url-field').value.trim();
+}
+
+
+// =========================
+// FETCH DATA
+// =========================
 function fetchData(url) {
   http.open('GET', url + '.json');
   http.responseType = 'json';
@@ -86,10 +105,15 @@ function fetchData(url) {
     // Enable Copy/Download
     document.getElementById('download-btn').disabled = false;
     document.getElementById('copy-btn').disabled = false;
+
+    // Show the visualization panel
+    document.getElementById('visualization-panel').classList.remove('hidden');
   };
 }
 
-// Extract relevant post fields
+// =========================
+// EXTRACT POST INFO
+// =========================
 function extractPostInfo(p) {
   return {
     title: p.title || '',
@@ -103,14 +127,17 @@ function extractPostInfo(p) {
   };
 }
 
-// Recursively process the comment tree
+// =========================
+// BUILD TABLE DATA
+// =========================
+// Recursively process the comment tree with prefix numbering (1,1.1,1.2,...)
 function buildTableData(comments, prefixArr) {
   if (!comments || !comments.length) return;
 
   let count = 0;
   comments.forEach(child => {
     if (child.kind === 'more') {
-      return; 
+      return;
     }
 
     let c = child.data;
@@ -138,45 +165,10 @@ function buildTableData(comments, prefixArr) {
   });
 }
 
-// Format the date in UTC
-function formatDate(utcSeconds) {
-  if (!utcSeconds) return '';
-  const d = new Date(utcSeconds * 1000); 
-  switch (selectedDateFormat) {
-    case 'iso8601':
-      return formatUTCAsISO8601(d);
-    case 'rfc1123':
-      return d.toUTCString();
-    case 'utc':
-      return formatUTCAsSimple(d);
-    default:
-      return d.toISOString();
-  }
-}
 
-// For ISO 8601 style: 2025-03-11T14:19:10+00:00
-function formatUTCAsISO8601(dateObj) {
-  const year = dateObj.getUTCFullYear();
-  const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(dateObj.getUTCDate()).padStart(2, '0');
-  const hours = String(dateObj.getUTCHours()).padStart(2, '0');
-  const mins = String(dateObj.getUTCMinutes()).padStart(2, '0');
-  const secs = String(dateObj.getUTCSeconds()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${mins}:${secs}+00:00`;
-}
-
-// For simple UTC style: 2025-03-11T14:19:10Z
-function formatUTCAsSimple(dateObj) {
-  const year = dateObj.getUTCFullYear();
-  const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(dateObj.getUTCDate()).padStart(2, '0');
-  const hours = String(dateObj.getUTCHours()).padStart(2, '0');
-  const mins = String(dateObj.getUTCMinutes()).padStart(2, '0');
-  const secs = String(dateObj.getUTCSeconds()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${mins}:${secs}Z`;
-}
-
-// Render the Post Info section
+// =========================
+// RENDER POST INFO
+// =========================
 function renderPostInfo(post) {
   const block = document.getElementById('post-info-block');
   block.classList.remove('hidden');
@@ -189,7 +181,7 @@ function renderPostInfo(post) {
     <p><strong>Upvotes:</strong> ${post.ups}</p>
     <p><strong>Downvotes:</strong> ${post.downs}</p>
     <p><strong>Score:</strong> ${post.score}</p>
-    <p><strong>Permalink:</strong> 
+    <p><strong>Permalink:</strong>
       <a href="https://www.reddit.com${post.permalink}" target="_blank">View Post</a>
     </p>
   `;
@@ -202,20 +194,10 @@ function renderPostInfo(post) {
   document.getElementById('post-info').innerHTML = html;
 }
 
-// Convert the comment body to HTML with/without line breaks
-function formatBodyForHtml(str) {
-  if (removeNewlines) {
-    return escapeHtml(str.replace(/\r?\n|\n\r|\n|\r/g, ' '));
-  } else {
-    // Convert newlines to <br>
-    return str
-      .split(/\r?\n|\n\r|\n|\r/g)
-      .map(part => escapeHtml(part))
-      .join('<br>');
-  }
-}
 
-// Render the comments table
+// =========================
+// RENDER TABLE
+// =========================
 function renderTable(data) {
   document.getElementById('output-block').classList.remove('hidden');
   const tableWrapper = document.getElementById('table-wrapper');
@@ -286,7 +268,50 @@ function renderTable(data) {
   tableBuilt = true;
 }
 
-// Escape HTML
+
+// =========================
+// DATE FORMATTING
+// =========================
+function formatDate(utcSeconds) {
+  if (!utcSeconds) return '';
+  const d = new Date(utcSeconds * 1000);
+  switch (selectedDateFormat) {
+    case 'iso8601':
+      return formatUTCAsISO8601(d);
+    case 'rfc1123':
+      return d.toUTCString();
+    case 'utc':
+      return formatUTCAsSimple(d);
+    default:
+      return d.toISOString();
+  }
+}
+
+// ISO 8601 style: 2025-03-11T14:19:10+00:00
+function formatUTCAsISO8601(dateObj) {
+  const year = dateObj.getUTCFullYear();
+  const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getUTCDate()).padStart(2, '0');
+  const hours = String(dateObj.getUTCHours()).padStart(2, '0');
+  const mins = String(dateObj.getUTCMinutes()).padStart(2, '0');
+  const secs = String(dateObj.getUTCSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${mins}:${secs}+00:00`;
+}
+
+// Simple UTC style: 2025-03-11T14:19:10Z
+function formatUTCAsSimple(dateObj) {
+  const year = dateObj.getUTCFullYear();
+  const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getUTCDate()).padStart(2, '0');
+  const hours = String(dateObj.getUTCHours()).padStart(2, '0');
+  const mins = String(dateObj.getUTCMinutes()).padStart(2, '0');
+  const secs = String(dateObj.getUTCSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${mins}:${secs}Z`;
+}
+
+// =========================
+// HELPER: Escape HTML
+// =========================
 function escapeHtml(str) {
   if (typeof str !== 'string') return '';
   return str
@@ -296,7 +321,24 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-// Sorting
+// Convert the comment body to HTML with/without line breaks
+function formatBodyForHtml(str) {
+  if (!str) return '[deleted]';
+  if (removeNewlines) {
+    return escapeHtml(str.replace(/\r?\n|\n\r|\n|\r/g, ' '));
+  } else {
+    // Convert newlines to <br>
+    return str
+      .split(/\r?\n|\n\r|\n|\r/g)
+      .map(part => escapeHtml(part))
+      .join('<br>');
+  }
+}
+
+
+// =========================
+// SORTING
+// =========================
 let sortAsc = true;
 function sortTable(column) {
   if (!tableBuilt || !tableData.length) return;
@@ -349,7 +391,10 @@ function compareArray(a, b) {
   return 0;
 }
 
-// Download CSV
+
+// =========================
+// DOWNLOAD CSV
+// =========================
 function downloadCSV() {
   if (!tableBuilt || !tableData.length) {
     alert('No table data to download. Please export first.');
@@ -410,7 +455,10 @@ function convertToCsvRow(arr) {
   }).join(',');
 }
 
-// Copy the rendered table as HTML
+
+// =========================
+// COPY TABLE AS HTML
+// =========================
 function copyTableAsHTML() {
   if (!tableBuilt) {
     alert('No table to copy. Please export first.');
@@ -460,3 +508,289 @@ function fallbackCopyAsHTML(tableEl) {
   }
   selection.removeAllRanges();
 }
+
+
+// =========================
+// VISUALIZATION MODULE
+// =========================
+
+/**
+ * Called when user clicks "Render Visualization".
+ * 1) Convert tableData => node dictionary => root hierarchy
+ * 2) Build a left-to-right collapsible tree with rectangular nodes
+ */
+function initVisualization() {
+  const vizContainer = document.getElementById('viz-container');
+  vizContainer.innerHTML = '';
+
+  // 1. Build a dictionary from tableData
+  const dict = buildNodeDictionary(tableData);
+
+  // 2. Convert dict => final root hierarchy
+  const root = buildHierarchyFromDict(dict);
+
+  // 3. Pass it to D3
+  createCollapsibleTree(root, 'viz-container');
+}
+
+/**
+ * Create a dictionary from tableData, keyed by row.numbering.
+ * Each entry has metadata for the node (score, snippet, etc.).
+ */
+function buildNodeDictionary(data) {
+  const dict = {};
+
+  data.forEach(row => {
+    const fullNum = row.numbering;       // e.g. "2.1.1"
+    const parts = fullNum.split('.');
+    const parentId = parts.length > 1
+      ? parts.slice(0, -1).join('.')     // e.g. "2.1"
+      : null;                            // no parent => root-level
+
+    dict[fullNum] = {
+      id: fullNum,
+      parentId,
+      score: row.score,
+      // short snippet
+      bodySnippet: createSnippet(row.body),
+      fullNumbering: fullNum
+    };
+  });
+
+  return dict;
+}
+
+/**
+ * Convert the dictionary into a single "root" hierarchy.
+ * The root node has name "Post". Each top-level comment is attached to root.
+ */
+function buildHierarchyFromDict(dict) {
+  const root = { name: "Post", children: [], count: 0 };
+
+  // Initialize each node's children = []
+  Object.values(dict).forEach(node => {
+    node.children = [];
+    node.count = 1; // will recalc below
+  });
+
+  // Link children to parents
+  Object.values(dict).forEach(node => {
+    if (!node.parentId) {
+      // top-level => child of root
+      root.children.push(node);
+    } else if (dict[node.parentId]) {
+      dict[node.parentId].children.push(node);
+    }
+  });
+
+  // Compute total descendant counts
+  computeCounts(root);
+  return root;
+}
+
+/** Short snippet of the body */
+function createSnippet(text) {
+  if (!text || text === '[deleted]') return '[deleted]';
+  const s = text.trim();
+  return s.length > 80 ? s.slice(0, 80) + '...' : s;
+}
+
+/** Recursively sum up the total number of descendant nodes into node.count */
+function computeCounts(node) {
+  if (!node.children || node.children.length === 0) {
+    node.count = 1;
+    return 1;
+  }
+  let sum = 0;
+  node.children.forEach(child => {
+    sum += computeCounts(child);
+  });
+  node.count = sum;
+  return sum;
+}
+
+/**
+ * D3-based collapsible tree with rectangular nodes.
+ * Left-to-right orientation, zoom & pan enabled.
+ */
+function createCollapsibleTree(data, containerId) {
+  const margin = { top: 20, right: 50, bottom: 20, left: 50 };
+  const width = 1000 - margin.left - margin.right;
+  const height = 700 - margin.top - margin.bottom;
+
+  // Create main SVG with zoom/pan
+  const svg = d3.select(`#${containerId}`).append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .call(
+      d3.zoom()
+        .scaleExtent([0.5, 5])
+        .on("zoom", (event) => {
+          g.attr("transform", event.transform);
+        })
+    );
+
+  const g = svg.append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+  const treeLayout = d3.tree()
+    .size([height, width])
+    .separation((a, b) => 1.5); // extra vertical gap
+
+  let root = d3.hierarchy(data, d => d.children);
+  root.x0 = height / 2;
+  root.y0 = 0;
+
+  // Initially collapse all except top-level
+  if (root.children) {
+    root.children.forEach(c => collapseDeep(c, 0));
+  }
+
+  update(root);
+
+  function collapseDeep(d, depth=0) {
+    if (d.children) {
+      if (depth > 0) {
+        d._children = d.children;
+        d._children.forEach(c => collapseDeep(c, depth+1));
+        d.children = null;
+      } else {
+        d.children.forEach(c => collapseDeep(c, depth+1));
+      }
+    }
+  }
+
+  function update(source) {
+    const treeData = treeLayout(root);
+    const nodes = treeData.descendants();
+    const links = treeData.links();
+
+    // Horizontal offset by depth
+    nodes.forEach(d => {
+      d.y = d.depth * 180; // room for the rect
+    });
+
+    // NODES
+    let nodeSel = g.selectAll("g.node")
+      .data(nodes, d => d.id || (d.id = Math.random()));
+
+    let nodeEnter = nodeSel.enter().append("g")
+      .attr("class", "node")
+      .attr("transform", _ => `translate(${source.y0},${source.x0})`)
+      .on("click", (event, d) => {
+        if (d.children) {
+          d._children = d.children;
+          d.children = null;
+        } else {
+          d.children = d._children;
+          d._children = null;
+        }
+        update(d);
+      });
+
+    // Rect parameters
+    const rectWidth = 140;
+    const rectHeight = 40;
+
+    // Node rectangle
+    nodeEnter.append("rect")
+      .attr("x", 0)
+      .attr("y", -rectHeight / 2)
+      .attr("width", 1e-6)
+      .attr("height", rectHeight)
+      .attr("fill", "#fff")
+      .attr("stroke", "#999");
+
+    // First text line => numbering
+    nodeEnter.append("text")
+      .attr("dy", "-0.2em")
+      .attr("x", 6)
+      .style("font", "12px sans-serif")
+      .style("fill-opacity", 1e-6)
+      .text(d => d.data.fullNumbering);
+
+    // Second line => Score (+hidden children)
+    nodeEnter.append("text")
+      .attr("dy", "1.2em")
+      .attr("x", 6)
+      .style("font", "12px sans-serif")
+      .style("fill", "#666")
+      .style("fill-opacity", 1e-6)
+      .text(d => {
+        let scoreLine = `Score: ${d.data.score}`;
+        if (d._children && d._children.length > 0) {
+          scoreLine += ` (+${d._children.length} hidden)`;
+        }
+        return scoreLine;
+      });
+
+    // Tooltip with snippet
+    nodeEnter.append("title")
+      .text(d => d.data.bodySnippet);
+
+    // UPDATE
+    let nodeUpdate = nodeEnter.merge(nodeSel);
+
+    nodeUpdate.transition()
+      .duration(400)
+      .attr("transform", d => `translate(${d.y},${d.x})`);
+
+    nodeUpdate.select("rect")
+      .attr("width", rectWidth);
+
+    nodeUpdate.selectAll("text")
+      .style("fill-opacity", 1);
+
+    // EXIT
+    let nodeExit = nodeSel.exit().transition()
+      .duration(300)
+      .attr("transform", _ => `translate(${source.y},${source.x})`)
+      .remove();
+
+    nodeExit.select("rect").attr("width", 1e-6);
+    nodeExit.selectAll("text").style("fill-opacity", 1e-6);
+
+    // LINKS
+    let linkSel = g.selectAll("path.link")
+      .data(links, d => d.target.id);
+
+    let linkEnter = linkSel.enter().insert("path", "g")
+      .attr("class", "link")
+      .attr("fill", "none")
+      .attr("stroke", "#ccc")
+      .attr("stroke-width", "1.5px")
+      .attr("d", _ => {
+        let o = { x: source.x0, y: source.y0 };
+        return diagonal(o, o);
+      });
+
+    let linkUpdate = linkEnter.merge(linkSel);
+    linkUpdate.transition()
+      .duration(300)
+      .attr("d", d => diagonal(d.source, d.target));
+
+    let linkExit = linkSel.exit().transition()
+      .duration(300)
+      .attr("d", _ => {
+        let o = { x: source.x, y: source.y };
+        return diagonal(o, o);
+      })
+      .remove();
+
+    // Store old positions
+    nodes.forEach(d => {
+      d.x0 = d.x;
+      d.y0 = d.y;
+    });
+  }
+
+  function diagonal(s, t) {
+    return `M ${s.y},${s.x}
+            C ${(s.y + t.y) / 2},${s.x},
+              ${(s.y + t.y) / 2},${t.x},
+              ${t.y},${t.x}`;
+  }
+}
+// =========================
+// END Visualization Module
+// =========================
